@@ -50,9 +50,10 @@ pub fn bump_next_split_id(env: &Env) {
 }
 
 pub fn set_split(env: &Env, split: &Split) {
-    env.storage()
-        .persistent()
-        .set(&DataKey::Split(split.split_id), split);
+    let key = DataKey::Split(split.split_id);
+    let max_ttl = env.ledger().max_ttl();
+    env.storage().persistent().set(&key, split);
+    env.storage().persistent().extend_ttl(&key, max_ttl, max_ttl);
 }
 
 pub fn get_split(env: &Env, split_id: u64) -> Option<Split> {
@@ -60,9 +61,10 @@ pub fn get_split(env: &Env, split_id: u64) -> Option<Split> {
 }
 
 pub fn set_whitelist_enabled(env: &Env, split_id: u64, enabled: bool) {
-    env.storage()
-        .persistent()
-        .set(&DataKey::WhitelistEnabled(split_id), &enabled);
+    let key = DataKey::WhitelistEnabled(split_id);
+    let max_ttl = env.ledger().max_ttl();
+    env.storage().persistent().set(&key, &enabled);
+    env.storage().persistent().extend_ttl(&key, max_ttl, max_ttl);
 }
 
 pub fn is_whitelist_enabled(env: &Env, split_id: u64) -> bool {
@@ -73,9 +75,10 @@ pub fn is_whitelist_enabled(env: &Env, split_id: u64) -> bool {
 }
 
 pub fn add_to_whitelist(env: &Env, split_id: u64, address: &Address) {
-    env.storage()
-        .persistent()
-        .set(&DataKey::WhitelistMember(split_id, address.clone()), &true);
+    let key = DataKey::WhitelistMember(split_id, address.clone());
+    let max_ttl = env.ledger().max_ttl();
+    env.storage().persistent().set(&key, &true);
+    env.storage().persistent().extend_ttl(&key, max_ttl, max_ttl);
 }
 
 pub fn remove_from_whitelist(env: &Env, split_id: u64, address: &Address) {
