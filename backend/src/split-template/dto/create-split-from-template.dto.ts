@@ -1,9 +1,6 @@
 import { IsString, IsOptional, IsArray } from "class-validator";
 
 export class CreateSplitFromTemplateDto {
-    @IsString()
-    templateId!: string;
-
     @IsOptional()
     @IsArray()
     participantOverrides?: any[];
