@@ -10,7 +10,7 @@ import {
 import { Request } from "express";
 import { ShortLinksService } from "./short-links.service";
 import { GenerateLinkDto } from "./dto/generate-link.dto";
-import { NfcPayloadService } from "./ nfc-payload.service";
+import { NfcPayloadService } from "./nfc-payload.service";
 
 interface AuthRequest extends Request {
   user: { id: string; wallet: string };

@@ -46,6 +46,7 @@ import { SplitTemplateModule } from "./split-template/split-template.module";
 import { StellarModule } from "./stellar/stellar.module";
 import { TemplatesModule } from "./templates/templates.module";
 import { UploadModule } from "./uploads/upload.module";
+import { ShortLinksModule } from "./short-links/short-links.module";
 import { WebhooksModule } from "./webhooks/webhooks.module";
 // Duplicate imports removed; already imported above.
 // Load environment variables
@@ -131,6 +132,7 @@ dotenv.config({
         ProfileModule,
         CollaborationModule,
         DashboardModule,
+        ShortLinksModule,
         // Duplicated modules were already included earlier.
     ],
 })
