@@ -1,9 +1,6 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, Repository } from 'typeorm';
-import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { Split } from '../../entities/split.entity';
 import { Item } from '../../entities/item.entity';
 import { Participant } from '../../entities/participant.entity';
@@ -91,7 +88,6 @@ export class SplitsService {
       throw new NotFoundException(`Split ${savedSplit.id} not found`);
     }
 
-    return createdSplit;
     // Perform fraud detection check
     try {
       const fraudRequest: AnalyzeSplitRequestDto = {
@@ -116,7 +112,7 @@ export class SplitsService {
       this.logger.error(`Fraud detection failed for split ${savedSplit.id}:`, error);
     }
 
-    return this.getSplitById(savedSplit.id);
+    return createdSplit;
   }
 
   /**

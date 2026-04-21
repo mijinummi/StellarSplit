@@ -12,6 +12,7 @@ describe('ProfileController', () => {
   const mockProfile: UserProfile = {
     walletAddress,
     displayName: 'Alice',
+    email: null,
     avatarUrl: null,
     preferredCurrency: 'USD',
     defaultSplitType: DefaultSplitType.EQUAL,

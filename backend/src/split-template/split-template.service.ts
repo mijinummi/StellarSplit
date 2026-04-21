@@ -147,7 +147,7 @@ export class SplitTemplateService {
         const round2 = (v: number) => Math.round(v * 100) / 100;
 
         // First pass: compute weights.
-        let weights: number[] = [];
+        let weights: number[];
 
         if (hasExplicitAmounts) {
             weights = list.map((p) => Number(p.amountOwed ?? 0));

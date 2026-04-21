@@ -7,6 +7,7 @@ import { Split } from '../entities/split.entity';
 import { StellarService } from '../stellar/stellar.service';
 import { PaymentProcessorService } from './payment-processor.service';
 import { FraudDetectionService, AnalyzePaymentRequestDto } from '../fraud-detection/fraud-detection.service';
+import { PaymentGateway } from '../websocket/payment.gateway';
 
 @Injectable()
 export class PaymentsService {

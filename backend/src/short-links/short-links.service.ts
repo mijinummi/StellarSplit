@@ -78,17 +78,19 @@ export class ShortLinksService {
       linkType: dto.linkType,
       targetParticipant: dto.targetParticipantId
         ? ({ id: dto.targetParticipantId } as any)
-        : null,
+        : undefined,
       expiresAt: expiry,
-      maxAccesses: dto.maxAccesses ?? null,
+      maxAccesses: dto.maxAccesses,
       createdBy: wallet,
     });
 
     await this.shortLinkRepo.save(link);
 
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+
     return {
       shortCode,
-      url: ${process.env.FRONTEND_URL}/l/,
+      url: `${frontendUrl}/l/${shortCode}`,
       sep0007: this.buildSep0007Uri(dto.splitId),
       expiresAt: expiry,
     };
@@ -126,7 +128,7 @@ export class ShortLinksService {
     });
 
     return {
-      redirectUrl: ${process.env.FRONTEND_URL}/splits/,
+      redirectUrl: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/splits/${link.split.id}`,
       linkType: link.linkType,
     };
   }
@@ -169,7 +171,7 @@ export class ShortLinksService {
       relations: ['split'],
     });
 
-    if (!link) throw new NotFoundException(Short link not found);
+    if (!link) throw new NotFoundException('Short link not found');
 
     // Only split creator can delete links
     const canDelete = await this.authorizationService.canDeleteShortLink(
@@ -184,6 +186,6 @@ export class ShortLinksService {
   }
 
   private buildSep0007Uri(splitId: string): string {
-    return web+stellar:pay?destination=&memo=;
+    return `web+stellar:pay?memo=${encodeURIComponent(`split:${splitId}`)}`;
   }
 }

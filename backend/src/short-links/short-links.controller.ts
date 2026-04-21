@@ -41,8 +41,8 @@ export class ShortLinksController {
   }
 
   @Get(":shortCode/analytics")
-  analytics(@Param("shortCode") code: string) {
-    return this.service.analytics(code);
+  analytics(@Param("shortCode") code: string, @Req() req: AuthRequest) {
+    return this.service.analytics(code, req.user.wallet);
   }
 
   @Post("nfc-payload/:splitId")
@@ -52,7 +52,7 @@ export class ShortLinksController {
   }
 
   @Delete(":shortCode")
-  remove(@Param("shortCode") code: string) {
-    return this.service.remove(code);
+  remove(@Param("shortCode") code: string, @Req() req: AuthRequest) {
+    return this.service.remove(code, req.user.wallet);
   }
 }

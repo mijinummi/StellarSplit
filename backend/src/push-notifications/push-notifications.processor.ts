@@ -6,6 +6,7 @@ import { Repository, In } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import * as firebaseAdmin from 'firebase-admin';
 import { DeviceRegistration } from './entities/device-registration.entity';
+import { NotificationEventType } from './entities/notification-preference.entity';
 
 @Processor('push_queue')
 export class PushNotificationProcessor {

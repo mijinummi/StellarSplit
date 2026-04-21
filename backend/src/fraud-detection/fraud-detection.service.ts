@@ -321,6 +321,8 @@ export class FraudDetectionService {
     });
 
     // Calculate accuracy as precision: true positives / (true positives + false positives)
+    const reviewed = resolved + falsePositives;
+    const truePositives = resolved;
     const accuracy = reviewed > 0 ? truePositives / reviewed : 0;
 
     return {
@@ -397,3 +399,5 @@ export class FraudDetectionService {
     return recommendations;
   }
 }
+
+export { AnalyzePaymentRequestDto } from "./dto/analyze-split.dto";

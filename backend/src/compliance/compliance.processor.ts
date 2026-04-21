@@ -14,6 +14,7 @@ import { QBOExporterService } from "./exporters/qbo-exporter.service";
 import { JSONExporterService } from "./exporters/json-exporter.service";
 import { OFXExporterService } from "./exporters/ofx-exporter.service";
 import { ProfileService } from "../profile/profile.service";
+import { EmailService } from "../email/email.service";
 import { Logger } from "@nestjs/common";
 import * as fs from "fs";
 import * as path from "path";

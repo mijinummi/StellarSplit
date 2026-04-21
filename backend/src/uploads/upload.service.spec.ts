@@ -15,7 +15,7 @@ describe('UploadService', () => {
           provide: ConfigService,
           useValue: {
             get: jest.fn((key: string) => {
-              const config = {
+              const config: Record<string, string> = {
                 AWS_REGION: 'us-east-1',
                 AWS_ACCESS_KEY_ID: 'test-key',
                 AWS_SECRET_ACCESS_KEY: 'test-secret',

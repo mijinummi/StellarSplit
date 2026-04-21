@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between } from 'typeorm';
 import { ExpenseCategory } from './entities/expense-category.entity';
@@ -122,8 +122,5 @@ export class ComplianceService {
             case ExportFormat.OFX: return 'application/xml';
             default: return 'application/octet-stream';
         }
-    }
-
-        return Object.values(summary).reduce((acc, curr) => acc + curr.deductible, 0);
     }
 }

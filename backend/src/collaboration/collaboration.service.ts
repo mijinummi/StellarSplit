@@ -301,7 +301,7 @@ export class CollaborationService {
         });
 
         const totalCurrentPercentage = activeCollaborations.reduce(
-            (sum, collab) => sum + (collab.splitPercentage || 0),
+            (sum: number, collab: Collaboration) => sum + (collab.splitPercentage || 0),
             0,
         );
 

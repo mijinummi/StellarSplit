@@ -136,6 +136,8 @@ describe('PushNotificationsService', () => {
       await expect(service.unregisterDevice('uuid', 'user1')).rejects.toThrow('Device does not belong to user');
     });
   });
+
+  describe('updatePreferences', () => {
     it('should update preferences', async () => {
       const dto = {
         userId: 'user1',

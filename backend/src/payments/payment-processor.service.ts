@@ -21,7 +21,8 @@ import { EmailService } from "../email/email.service";
 import { MultiCurrencyService } from "../multi-currency/multi-currency.service";
 import { EventsGateway } from "../gateway/events.gateway";
 import { AnalyticsService } from "../analytics/analytics.service";
-import { FraudDetectionService, AnalyzePaymentRequestDto } from '../fraud-detection/fraud-detection.service';
+import { FraudDetectionService } from '../fraud-detection/fraud-detection.service';
+import type { AnalyzePaymentRequestDto } from "../fraud-detection/dto/analyze-split.dto";
 import * as crypto from "crypto";
 import { ReputationService } from "../reputation/reputation.service";
 import { ReputationEventType } from "../reputation/enums/reputation-event-type.enum";
@@ -85,8 +86,8 @@ export class PaymentProcessorService {
     private readonly dataSource: DataSource,
     @Optional() private readonly analyticsService?: AnalyticsService,
     @Optional() private readonly fraudDetectionService?: FraudDetectionService,
+    @Optional() private readonly reputationService?: ReputationService,
     @Optional() private readonly customConfig?: Partial<PaymentProcessorConfig>,
-    private readonly reputationService: ReputationService,
   ) {
     this.config = { ...DEFAULT_CONFIG, ...customConfig };
   }
@@ -341,12 +342,14 @@ export class PaymentProcessorService {
             ? ReputationEventType.PAID_ON_TIME
             : ReputationEventType.PAID_LATE;
 
-        await this.reputationService.recordEvent(
-          participant.userId,
-          splitId,
-          eventType,
-          queryRunner.manager,
-        );
+        if (this.reputationService) {
+          await this.reputationService.recordEvent(
+            participant.userId,
+            splitId,
+            eventType,
+            queryRunner.manager,
+          );
+        }
       }
 
       // Commit the transaction
