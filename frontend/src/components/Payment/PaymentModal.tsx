@@ -6,7 +6,7 @@ import { QRCodeGenerator } from './QRCodeGenerator';
 import { QRCodeScanner } from './QRCodeScanner';
 import { PaymentURIHandler } from './PaymentURIHandler';
 import type { ParsedStellarPaymentURI } from '../../utils/stellar/paymentUri';
-import { useWallet } from '../../hooks/use-wallet';
+import { usePaymentCheckout } from '../../hooks/usePaymentCheckout';
 
 interface PaymentModalProps {
     isOpen: boolean;
@@ -29,13 +29,13 @@ export const PaymentModal = ({
     splitId,
     onConfirm,
     onConfirmScannedPayment,
-    isProcessing
+    isProcessing: externalIsProcessing
 }: PaymentModalProps) => {
     const { t } = useTranslation();
     const {
         canTransact,
         connect,
-        error,
+        walletError: error,
         hasFreighter,
         isConnected,
         isConnecting,
@@ -44,7 +44,9 @@ export const PaymentModal = ({
         refresh,
         requiredNetworkLabel,
         walletNetworkLabel,
-    } = useWallet();
+        isProcessing: checkoutIsProcessing,
+    } = usePaymentCheckout();
+    const isProcessing = externalIsProcessing || checkoutIsProcessing;
     const [isScannerOpen, setIsScannerOpen] = useState(false);
     const [scannedPaymentUri, setScannedPaymentUri] = useState<string | null>(null);
     const paymentRequest = useMemo(() => ({

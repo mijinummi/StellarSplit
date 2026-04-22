@@ -1,7 +1,5 @@
-import { useState } from "react";
 import { PaymentURIHandler } from "../components/Payment/PaymentURIHandler";
-import { useWallet } from "../hooks/use-wallet";
-import { signAndSubmitPayment } from "../utils/stellar/wallet";
+import { usePaymentCheckout } from "../hooks/usePaymentCheckout";
 import type { ParsedStellarPaymentURI } from "../utils/stellar/paymentUri";
 
 export default function PaymentURIPage() {
@@ -9,56 +7,20 @@ export default function PaymentURIPage() {
     canTransact,
     connect,
     hasFreighter,
-    horizonUrl,
     isConnecting,
     isRefreshing,
-    networkPassphrase,
     publicKey,
     refresh,
     requiredNetworkLabel,
     walletNetworkLabel,
-    error: walletError,
-    signTransaction,
-  } = useWallet();
-  const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
-  const [error, setError] = useState<string | null>(null);
+    walletError,
+    status,
+    error,
+    performPayment,
+  } = usePaymentCheckout();
 
   const handlePay = async (payment: ParsedStellarPaymentURI) => {
-    if (!payment.amount) {
-      throw new Error("Payment amount is required.");
-    }
-
-    if (!publicKey) {
-      throw new Error("Connect your wallet before confirming this payment.");
-    }
-
-    if (!canTransact) {
-      throw new Error(
-        `Switch Freighter to ${requiredNetworkLabel} before paying.`,
-      );
-    }
-
-    setStatus("idle");
-    setError(null);
-
-    const result = await signAndSubmitPayment({
-      amount: payment.amount,
-      destination: payment.destination,
-      sourceAccount: publicKey,
-      networkPassphrase,
-      horizonUrl,
-      memo: payment.memo,
-      memoType: payment.memoType === "return" ? "text" : payment.memoType,
-      signTransaction,
-    });
-
-    if (!result.success) {
-      setStatus("error");
-      setError(result.error ?? "Could not submit payment.");
-      throw new Error(result.error ?? "Could not submit payment.");
-    }
-
-    setStatus("success");
+    await performPayment(payment);
   };
 
   return (

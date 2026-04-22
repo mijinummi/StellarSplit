@@ -1616,7 +1616,7 @@ Provides theme state (light/dark/system) and applies it to the DOM.
 | `children` | `ReactNode` | Yes | — |
 
 ```tsx
-import { ThemeProvider } from "@components/ThemeContex"
+import { ThemeProvider } from "@components/ThemeContext"
 import { ThemeToggle } from "@components/ThemeToggle"
 
 export function Example() {

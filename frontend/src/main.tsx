@@ -5,9 +5,13 @@ import "./index.css";
 import HomePage from "./pages/Home";
 import RootLayout from "./layouts/RootLayout";
 import { WalletProvider } from "./hooks/use-wallet";
-import { ThemeProvider } from "./components/ThemeContex";
+import { ThemeProvider } from "./components/ThemeContext";
 import { CollaborationProvider } from "./components/Collaboration";
+import { bootstrapTheme } from "./utils/themeBootstrap";
 import "./i18n/config";
+
+// Apply theme before hydration to prevent flash
+bootstrapTheme();
 
 const router = createBrowserRouter([
   {
