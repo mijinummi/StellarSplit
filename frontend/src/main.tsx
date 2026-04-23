@@ -11,6 +11,8 @@ import RouteErrorBoundary from "./components/routing/RouteErrorBoundary";
 import RoutePending from "./components/routing/RoutePending";
 import { bootstrapTheme } from "./utils/themeBootstrap";
 import "./i18n/config";
+import InstallPrompt from "./components/InstallPrompt";
+import { registerServiceWorker } from "./utils/sw-register";
 
 // Apply theme before hydration to prevent flash
 bootstrapTheme();
@@ -84,11 +86,14 @@ const router = createBrowserRouter([
   },
 ]);
 
+void registerServiceWorker();
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ThemeProvider>
       <WalletProvider>
         <CollaborationProvider>
+          <InstallPrompt />
           <RouterProvider router={router} />
         </CollaborationProvider>
       </WalletProvider>

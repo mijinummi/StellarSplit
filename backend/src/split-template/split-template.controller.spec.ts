@@ -4,12 +4,17 @@ import { SplitTemplateService } from "./split-template.service";
 import { CreateSplitTemplateDto } from "./dto/create-split-template.dto";
 import { CreateSplitFromTemplateDto } from "./dto/create-split-from-template.dto";
 import { SplitType } from "./entities/split-template.entity";
+import { AuthUser } from "../auth/types/auth-user.interface";
 
 describe("SplitTemplateController", () => {
     let controller: SplitTemplateController;
     let service: SplitTemplateService;
 
-    const mockUser = { wallet: "test-wallet-address" };
+    const mockUser: AuthUser = {
+        id: "test-wallet-address",
+        walletAddress: "test-wallet-address",
+        raw: { sub: "test-wallet-address" },
+    };
 
     const mockTemplate = {
         id: "test-id",
@@ -66,13 +71,10 @@ describe("SplitTemplateController", () => {
 
             mockSplitTemplateService.create.mockResolvedValue(mockTemplate);
 
-            const result = await controller.create(
-                { user: mockUser } as any,
-                createDto,
-            );
+            const result = await controller.create(mockUser, createDto);
 
             expect(service.create).toHaveBeenCalledWith(
-                mockUser.wallet,
+                mockUser.walletAddress,
                 createDto,
             );
             expect(result).toEqual(mockTemplate);
@@ -86,10 +88,10 @@ describe("SplitTemplateController", () => {
                 templates,
             );
 
-            const result = await controller.findAll({ user: mockUser } as any);
+            const result = await controller.findAll(mockUser);
 
             expect(service.findAllForUser).toHaveBeenCalledWith(
-                mockUser.wallet,
+                mockUser.walletAddress,
             );
             expect(result).toEqual(templates);
         });

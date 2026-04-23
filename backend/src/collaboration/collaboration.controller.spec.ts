@@ -7,6 +7,13 @@ import {
     CollaborationType,
 } from "./entities/collaboration.entity";
 import { Artist } from "../artists/entities/artist.entity";
+import { AuthUser } from "../auth/types/auth-user.interface";
+
+const authUser = (wallet: string): AuthUser => ({
+    id: wallet,
+    walletAddress: wallet,
+    raw: { sub: wallet },
+});
 
 describe("CollaborationController", () => {
     let controller: CollaborationController;
@@ -90,7 +97,7 @@ describe("CollaborationController", () => {
             );
 
             const result = await controller.createCollaboration(
-                { user: { wallet: "inviter-wallet" } } as any,
+                authUser("inviter-wallet"),
                 createDto,
             );
 
@@ -114,7 +121,7 @@ describe("CollaborationController", () => {
             );
 
             const result = await controller.getCollaborations(
-                { user: { wallet: "user-wallet" } } as any,
+                authUser("user-wallet"),
                 CollaborationStatus.INVITED,
                 "1",
                 "10",
@@ -136,9 +143,10 @@ describe("CollaborationController", () => {
                 mockCollaboration,
             );
 
-            const result = await controller.getCollaborationById("collab-id", {
-                user: { wallet: "user-wallet" },
-            } as any);
+            const result = await controller.getCollaborationById(
+                "collab-id",
+                authUser("user-wallet"),
+            );
 
             expect(service.getCollaborationById).toHaveBeenCalledWith(
                 "collab-id",
@@ -169,7 +177,7 @@ describe("CollaborationController", () => {
 
             const result = await controller.respondToCollaboration(
                 "collab-id",
-                { user: { wallet: "artist-wallet" } } as any,
+                authUser("artist-wallet"),
                 responseDto,
             );
 
@@ -202,7 +210,7 @@ describe("CollaborationController", () => {
 
             const result = await controller.removeCollaboration(
                 "collab-id",
-                { user: { wallet: "inviter-wallet" } } as any,
+                authUser("inviter-wallet"),
                 removeDto,
             );
 
@@ -228,9 +236,9 @@ describe("CollaborationController", () => {
 
             mockService.getCollaborationStats.mockResolvedValue(mockStats);
 
-            const result = await controller.getCollaborationStats({
-                user: { wallet: "user-wallet" },
-            } as any);
+            const result = await controller.getCollaborationStats(
+                authUser("user-wallet"),
+            );
 
             expect(service.getCollaborationStats).toHaveBeenCalledWith(
                 "user-wallet",

@@ -1,15 +1,11 @@
-import { useEffect, useRef } from "react";
-import { registerServiceWorker } from "./utils/sw-register";
+import { useRef } from "react";
 import { SplitDetailPage } from "./pages/SplitView/SplitDetailPage";
 
 function App() {
   const announceRef = useRef<HTMLDivElement>(null);
 
   // Function to announce messages to screen readers
-
-  useEffect(() => {
-    registerServiceWorker();
-  }, []);
+  // Service worker registration is handled in `main.tsx`
 
   return (
     <>

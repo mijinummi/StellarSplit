@@ -29,7 +29,7 @@ fn test_swap_failure_event_emitted() {
     let res = client.try_execute_path_payment(&caller, &split_id, &path, &amount, &0u32);
     assert!(res.is_err());
 
-    // Check that swap_fail event was emitted
+    // Check that swap_err event was emitted (see events::emit_swap_failed; topic is swap_err for symbol limit)
     let events = env.events().all();
     let found = events.iter().any(|e| {
         let (addr, topics, data) = e;
@@ -37,7 +37,7 @@ fn test_swap_failure_event_emitted() {
             return false;
         }
 
-        let target_symbol = soroban_sdk::symbol_short!("swap_fail");
+        let target_symbol = soroban_sdk::symbol_short!("swap_err");
         let mut topic_found = false;
         for t in topics.iter() {
             if let Ok(sym) = Symbol::try_from_val(&env, &t) {
@@ -55,7 +55,7 @@ fn test_swap_failure_event_emitted() {
         }
         false
     });
-    assert!(found, "swap_fail event should be emitted on swap failure");
+    assert!(found, "swap_err event should be emitted on swap failure");
 }
 
 extern crate std;

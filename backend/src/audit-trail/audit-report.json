@@ -1,11 +1,7 @@
 {
-  "generatedAt": "2026-04-21T20:08:18.615Z",
-  "totalEvents": 6,
+  "generatedAt": "2026-04-23T22:37:29.382Z",
+  "totalEvents": 2,
   "actions": [
-    "test",
-    "login",
-    "test",
-    "login",
     "test",
     "login"
   ],

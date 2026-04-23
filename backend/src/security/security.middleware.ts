@@ -1,5 +1,9 @@
 import { Injectable, NestMiddleware } from '@nestjs/common';
-import { Request, Response, NextFunction } from 'express';
+import type {
+  NextFunction,
+  Request,
+  Response,
+} from 'express-serve-static-core';
 import helmet from 'helmet';
 import xssClean from 'xss-clean';
 import csrf from 'csurf';
@@ -28,11 +32,11 @@ export class SecurityMiddleware implements NestMiddleware {
   });
 
   use(req: Request, res: Response, next: NextFunction): void {
-    this.helmetHandler(req, res, (helmetError?: Error) => {
-      if (helmetError) return next(helmetError);
+    this.helmetHandler(req, res, (helmetError?: unknown) => {
+      if (helmetError) return next(helmetError as Error);
 
-      this.xssCleanHandler(req, res, (xssError?: Error) => {
-        if (xssError) return next(xssError);
+      this.xssCleanHandler(req, res, (xssError?: unknown) => {
+        if (xssError) return next(xssError as Error);
 
         if (this.isProduction) {
           res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -44,8 +48,8 @@ export class SecurityMiddleware implements NestMiddleware {
           );
         }
 
-        this.rateLimitHandler(req, res, (rateLimitError?: Error) => {
-          if (rateLimitError) return next(rateLimitError);
+        this.rateLimitHandler(req, res, (rateLimitError?: unknown) => {
+          if (rateLimitError) return next(rateLimitError as Error);
 
           if (this.enableCsrf) {
             this.csrfHandler(req, res, next);
