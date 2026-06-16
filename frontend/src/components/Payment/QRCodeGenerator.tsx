@@ -1,6 +1,10 @@
 import { useMemo, useRef, useState } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
-import { buildPaymentDeepLinks, buildStellarPaymentURI, type StellarPaymentRequest } from '../../utils/stellar/paymentUri';
+import {
+  buildPaymentDeepLinks,
+  buildStellarPaymentURI,
+  type StellarPaymentRequest,
+} from '../../utils/stellar/paymentUri';
 import { copyToClipboard } from '../../utils/browserShare';
 import { QRDownload } from './QRDownload';
 
@@ -32,6 +36,7 @@ export const QRCodeGenerator = ({
       };
     }
   }, [paymentRequest]);
+
   const paymentUri = paymentUriResult.uri;
   const uriError = paymentUriResult.error;
 
@@ -39,6 +44,7 @@ export const QRCodeGenerator = ({
     if (!paymentUri) {
       return null;
     }
+
     return buildPaymentDeepLinks(paymentUri);
   }, [paymentUri]);
 
@@ -48,19 +54,27 @@ export const QRCodeGenerator = ({
     }
 
     try {
-      // Issue #488 — use browserShare adapter
       const result = await copyToClipboard(paymentUri);
+
       if (result.success) {
         setCopied(true);
         window.setTimeout(() => setCopied(false), 1500);
       } else {
         setError(result.error.message);
       }
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'Failed to copy payment URI',
+      );
+    }
   };
 
   if (uriError || error) {
     return (
-      <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700" role="alert">
+      <div
+        className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+        role="alert"
+      >
         {uriError ?? error}
       </div>
     );
@@ -91,7 +105,10 @@ export const QRCodeGenerator = ({
         </div>
       </div>
 
-      <div className="mt-3 rounded-lg bg-gray-50 p-2 text-xs text-gray-700 break-all" data-testid="payment-uri-value">
+      <div
+        className="mt-3 break-all rounded-lg bg-gray-50 p-2 text-xs text-gray-700"
+        data-testid="payment-uri-value"
+      >
         {paymentUri}
       </div>
 
@@ -103,12 +120,14 @@ export const QRCodeGenerator = ({
         >
           {copied ? 'Copied' : 'Copy URI'}
         </button>
+
         <a
           href={deepLinks.walletDeepLink}
           className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-center text-sm font-semibold text-gray-800 transition hover:bg-gray-50"
         >
           Open Wallet
         </a>
+
         <QRDownload qrContainerRef={qrContainerRef} />
       </div>
     </div>
