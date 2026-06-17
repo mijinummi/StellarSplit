@@ -649,3 +649,65 @@ fn test_cancel_split() {
 
     let _ = token_admin;
 }
+
+#[test]
+fn test_create_escrow_zero_amount() {
+    let (env, client, _admin, creator, _participant, _tc, _ta) = setup();
+
+    let mut obligations = Map::new(&env);
+    // Single obligation of 0, total_amount = 0
+    obligations.set(Address::generate(&env), 0);
+
+    let res = client.try_create_escrow(
+        &creator,
+        &String::from_str(&env, "Zero amount"),
+        &0,
+        &Map::new(&env),
+        &obligations,
+        &None,
+        &false,
+        &None,
+    );
+    assert!(res.is_err());
+    // Error::InvalidAmount = 4 => HostError: Error(Contract, #4)
+}
+
+#[test]
+fn test_create_escrow_zero_obligation() {
+    let (env, client, _admin, creator, participant, _tc, _ta) = setup();
+
+    let mut obligations = Map::new(&env);
+    obligations.set(participant.clone(), 0);
+
+    let res = client.try_create_escrow(
+        &creator,
+        &String::from_str(&env, "Zero obligation"),
+        &100,
+        &Map::new(&env),
+        &obligations,
+        &None,
+        &false,
+        &None,
+    );
+    assert!(res.is_err());
+}
+
+#[test]
+fn test_create_escrow_negative_obligation() {
+    let (env, client, _admin, creator, participant, _tc, _ta) = setup();
+
+    let mut obligations = Map::new(&env);
+    obligations.set(participant.clone(), -50);
+
+    let res = client.try_create_escrow(
+        &creator,
+        &String::from_str(&env, "Negative obligation"),
+        &100,
+        &Map::new(&env),
+        &obligations,
+        &None,
+        &false,
+        &None,
+    );
+    assert!(res.is_err());
+}
