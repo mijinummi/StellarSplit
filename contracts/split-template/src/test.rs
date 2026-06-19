@@ -171,7 +171,7 @@ mod tests {
 
         // IDs should be the same when created with same inputs and ledger sequence
         assert_eq!(id1, id2);
-        
+
         // Verify ID format is 64-character hex string
         assert_eq!(id1.len(), 64);
     }
@@ -252,11 +252,11 @@ mod tests {
 
         // Should be different IDs due to different ledger sequences
         assert_ne!(id1, id2);
-        
+
         // Both templates should be retrievable
         let template1 = client.get_template(&id1);
         let template2 = client.get_template(&id2);
-        
+
         assert_eq!(template1.name, name);
         assert_eq!(template2.name, name);
         assert_eq!(template1.creator, creator);
@@ -292,7 +292,7 @@ mod tests {
 
         // Verify ID is 64-character hex string
         assert_eq!(template_id.len(), 64);
-        
+
         // Verify all characters are valid hex (uppercase)
         let id_str = template_id.to_str();
         for char in id_str.chars() {

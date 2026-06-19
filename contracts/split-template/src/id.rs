@@ -26,25 +26,25 @@ use crate::utils::hash_to_hex_upper;
 pub fn generate_template_id(env: &Env, creator: &Address, name: &String) -> String {
     // Get current ledger sequence for temporal uniqueness
     let ledger_seq = env.ledger().sequence();
-    
+
     // Create a hashable payload combining all uniqueness factors
     let mut payload = Bytes::new(env);
-    
+
     // Add creator address to payload
     let creator_bytes = creator.to_bytes();
     payload.extend_from_array(creator_bytes.as_slice());
-    
-    // Add name bytes to payload  
+
+    // Add name bytes to payload
     let name_bytes = name.to_bytes();
     payload.extend_from_array(name_bytes.as_slice());
-    
+
     // Add ledger sequence to payload (converted to bytes)
     let seq_bytes = ledger_seq.to_le_bytes();
     payload.extend_from_array(&seq_bytes);
-    
+
     // Compute SHA256 hash of the combined payload
     let hash = env.crypto().sha256(&payload);
-    
+
     // Convert hash to hex string for storage
     hash_to_hex_upper(env, &hash)
 }
@@ -59,16 +59,16 @@ mod tests {
         let env = Env::default();
         let creator = Address::generate(&env);
         let name = String::from_str(&env, "Test Template");
-        
+
         // Mock the ledger sequence to be the same
         env.ledger().set_sequence(12345);
-        
+
         let id1 = generate_template_id(&env, &creator, &name);
         let id2 = generate_template_id(&env, &creator, &name);
-        
+
         // Same inputs should produce same ID
         assert_eq!(id1, id2);
-        
+
         // ID should be 64 hex characters (SHA256 output)
         assert_eq!(id1.len(), 64);
     }
@@ -79,13 +79,13 @@ mod tests {
         let creator1 = Address::generate(&env);
         let creator2 = Address::generate(&env);
         let name = String::from_str(&env, "Same Name");
-        
+
         // Mock the ledger sequence to be the same
         env.ledger().set_sequence(12345);
-        
+
         let id1 = generate_template_id(&env, &creator1, &name);
         let id2 = generate_template_id(&env, &creator2, &name);
-        
+
         // Different creators should produce different IDs
         assert_ne!(id1, id2);
     }
@@ -96,13 +96,13 @@ mod tests {
         let creator = Address::generate(&env);
         let name1 = String::from_str(&env, "Template A");
         let name2 = String::from_str(&env, "Template B");
-        
+
         // Mock the ledger sequence to be the same
         env.ledger().set_sequence(12345);
-        
+
         let id1 = generate_template_id(&env, &creator, &name1);
         let id2 = generate_template_id(&env, &creator, &name2);
-        
+
         // Different names should produce different IDs
         assert_ne!(id1, id2);
     }
@@ -112,15 +112,15 @@ mod tests {
         let env = Env::default();
         let creator = Address::generate(&env);
         let name = String::from_str(&env, "Same Template");
-        
+
         // First ledger sequence
         env.ledger().set_sequence(12345);
         let id1 = generate_template_id(&env, &creator, &name);
-        
+
         // Different ledger sequence
         env.ledger().set_sequence(12346);
         let id2 = generate_template_id(&env, &creator, &name);
-        
+
         // Different ledger times should produce different IDs
         assert_ne!(id1, id2);
     }
@@ -130,11 +130,11 @@ mod tests {
         let env = Env::default();
         let creator = Address::generate(&env);
         let name = String::from_str(&env, "Format Test");
-        
+
         env.ledger().set_sequence(100);
-        
+
         let id = generate_template_id(&env, &creator, &name);
-        
+
         // Verify it's valid hex (uppercase)
         assert_eq!(id.len(), 64);
         for char in id.to_str().chars() {
