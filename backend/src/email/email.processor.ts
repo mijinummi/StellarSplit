@@ -1,35 +1,30 @@
-import { Process, Processor } from "@nestjs/bull";
+import { Process, Processor, OnQueueFailed, InjectQueue } from "@nestjs/bull";
 import { Logger } from "@nestjs/common";
-import { Job } from "bull";
-import * as nodemailer from "nodemailer";
-import * as handlebars from "handlebars";
-import * as fs from "fs";
-import * as path from "path";
+import { Job, Queue } from "bull";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { User } from "../entities/user.entity";
-import { ConfigService } from "@nestjs/config";
+import { EmailService } from "./email.service";
+import {
+  logJobFailure,
+  routeToDeadLetter,
+} from "../common/queue-job-policy";
 
 @Processor("email_queue")
 export class EmailProcessor {
   private readonly logger = new Logger(EmailProcessor.name);
-  private transporter: nodemailer.Transporter;
 
   constructor(
     @InjectRepository(User) private readonly userRepository: Repository<User>,
-    private readonly configService: ConfigService,
-  ) {
-    this.transporter = nodemailer.createTransport({
-      host: this.configService.get<string>("MAIL_HOST", "smtp.mailtrap.io"),
-      port: this.configService.get<number>("MAIL_PORT", 2525),
-      auth: {
-        user: this.configService.get<string>("MAIL_USER"),
-        pass: this.configService.get<string>("MAIL_PASS"),
-      },
-    });
-  }
+    private readonly emailService: EmailService,
+    @InjectQueue("email_queue_dead_letter")
+    private readonly deadLetterQueue: Queue,
+  ) {}
 
-  @Process("sendEmail")
+  @Process({
+    name: "sendEmail",
+    concurrency: 1,
+  })
   async handleSendEmail(job: Job<any>) {
     const { to, type, context } = job.data;
 
@@ -49,7 +44,6 @@ export class EmailProcessor {
           return;
         }
 
-        // Preference check
         const preferences = user.emailPreferences;
         const preferenceKeyMap: Record<string, keyof typeof preferences> = {
           invitation: "invitations",
@@ -64,28 +58,7 @@ export class EmailProcessor {
         }
       }
 
-      const templatePath = path.join(__dirname, "templates", `${type}.hbs`);
-      if (!fs.existsSync(templatePath)) {
-        throw new Error(`Template not found at ${templatePath}`);
-      }
-
-      const source = fs.readFileSync(templatePath, "utf8");
-      const template = handlebars.compile(source);
-      const html = template(context);
-
-      const subjectMap: Record<string, string> = {
-        invitation: "Invitation to join a new Split on StellarSplit",
-        reminder: "Payment Reminder for StellarSplit",
-        confirmation: "Payment Received Confirmation",
-        completed: "Split Completed!",
-      };
-
-      await this.transporter.sendMail({
-        from: '"StellarSplit" <noreply@stellarsplit.com>',
-        to,
-        subject: subjectMap[type] || "StellarSplit Notification",
-        html,
-      });
+      await this.emailService.sendTemplatedEmail(to, type, context);
 
       if (user) {
         await this.userRepository.update(user.id, {
@@ -94,9 +67,26 @@ export class EmailProcessor {
       }
 
       this.logger.log(`Email sent successfully to ${to}`);
-    } catch (error: any) {
-      this.logger.error(`Failed to send email to ${to}: ${error.message}`);
+    } catch (error: unknown) {
+      logJobFailure(this.logger, job, error, { context: "email-send" });
       throw error;
+    }
+  }
+
+  @OnQueueFailed()
+  async onFailed(job: Job, err: Error): Promise<void> {
+    logJobFailure(this.logger, job, err, { context: "email-dead-letter" });
+
+    const maxAttempts = job.opts.attempts ?? 3;
+    if (job.attemptsMade >= maxAttempts) {
+      await routeToDeadLetter(
+        {
+          add: (name, data, opts) =>
+            this.deadLetterQueue.add(name, data, opts as object),
+        },
+        job,
+        err,
+      );
     }
   }
 }
