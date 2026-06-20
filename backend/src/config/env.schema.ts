@@ -3,7 +3,11 @@ import * as Joi from 'joi';
 export const envSchema = Joi.object({
   NODE_ENV: Joi.string().valid('development', 'test', 'production').required(),
   PORT: Joi.number().default(3000),
-  DATABASE_URL: Joi.string().uri().required(),
+  DATABASE_HOST: Joi.string().required(),
+  DATABASE_PORT: Joi.number().default(5432),
+  DATABASE_USERNAME: Joi.string().required(),
+  DATABASE_PASSWORD: Joi.string().required(),
+  DATABASE_NAME: Joi.string().required(),
   REDIS_URL: Joi.string().uri().required(),
   AWS_ACCESS_KEY: Joi.string().optional(),
   AWS_SECRET_KEY: Joi.string().optional(),

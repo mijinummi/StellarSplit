@@ -1,33 +1,28 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
-import { ConfigService } from "@nestjs/config";
+import { getQueueToken } from "@nestjs/bull";
 import { EmailProcessor } from "./email.processor";
+import { EmailService } from "./email.service";
 import { User } from "../entities/user.entity";
-import * as nodemailer from "nodemailer";
-import * as fs from "fs";
-
-jest.mock("nodemailer");
-jest.mock("fs");
 
 describe("EmailProcessor", () => {
   let processor: EmailProcessor;
   let userRepository: any;
-  let configService: any;
-  let transporterMock: any;
+  let emailService: any;
+  let deadLetterQueue: any;
 
   beforeEach(async () => {
-    transporterMock = {
-      sendMail: jest.fn().mockResolvedValue({}),
+    emailService = {
+      sendTemplatedEmail: jest.fn().mockResolvedValue(undefined),
     };
-    (nodemailer.createTransport as jest.Mock).mockReturnValue(transporterMock);
 
     userRepository = {
       findOne: jest.fn(),
       update: jest.fn(),
     };
 
-    configService = {
-      get: jest.fn().mockImplementation((key, defaultVal) => defaultVal || key),
+    deadLetterQueue = {
+      add: jest.fn().mockResolvedValue({}),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -38,8 +33,12 @@ describe("EmailProcessor", () => {
           useValue: userRepository,
         },
         {
-          provide: ConfigService,
-          useValue: configService,
+          provide: EmailService,
+          useValue: emailService,
+        },
+        {
+          provide: getQueueToken("email_queue_dead_letter"),
+          useValue: deadLetterQueue,
         },
       ],
     }).compile();
@@ -69,16 +68,13 @@ describe("EmailProcessor", () => {
     };
 
     userRepository.findOne.mockResolvedValue(mockUser);
-    (fs.existsSync as jest.Mock).mockReturnValue(true);
-    (fs.readFileSync as jest.Mock).mockReturnValue("Hello {{inviterName}}");
 
     await processor.handleSendEmail(job);
 
-    expect(transporterMock.sendMail).toHaveBeenCalledWith(
-      expect.objectContaining({
-        to: "test@example.com",
-        subject: "Invitation to join a new Split on StellarSplit",
-      }),
+    expect(emailService.sendTemplatedEmail).toHaveBeenCalledWith(
+      "test@example.com",
+      "invitation",
+      { inviterName: "John" },
     );
     expect(userRepository.update).toHaveBeenCalledWith("user1", {
       lastEmailSentAt: expect.any(Date),
@@ -98,14 +94,14 @@ describe("EmailProcessor", () => {
     const mockUser = {
       id: "user1",
       email: "test@example.com",
-      lastEmailSentAt: new Date(Date.now() - 30000), // 30 seconds ago
+      lastEmailSentAt: new Date(Date.now() - 30000),
     };
 
     userRepository.findOne.mockResolvedValue(mockUser);
 
     await processor.handleSendEmail(job);
 
-    expect(transporterMock.sendMail).not.toHaveBeenCalled();
+    expect(emailService.sendTemplatedEmail).not.toHaveBeenCalled();
   });
 
   it("should not send an email if user disabled that type", async () => {
@@ -129,6 +125,49 @@ describe("EmailProcessor", () => {
 
     await processor.handleSendEmail(job);
 
-    expect(transporterMock.sendMail).not.toHaveBeenCalled();
+    expect(emailService.sendTemplatedEmail).not.toHaveBeenCalled();
+  });
+
+  it("should route exhausted jobs to the dead-letter queue", async () => {
+    const job = {
+      id: "42",
+      name: "sendEmail",
+      data: { to: "fail@example.com", type: "invitation", context: {} },
+      attemptsMade: 3,
+      opts: { attempts: 3 },
+      queue: { name: "email_queue" },
+    } as any;
+
+    const err = new Error("SMTP connection refused");
+
+    await processor.onFailed(job, err);
+
+    expect(deadLetterQueue.add).toHaveBeenCalledWith(
+      "sendEmail",
+      expect.objectContaining({
+        jobId: "42",
+        error: expect.objectContaining({ message: "SMTP connection refused" }),
+      }),
+      expect.objectContaining({
+        attempts: 1,
+        removeOnComplete: false,
+        removeOnFail: false,
+      }),
+    );
+  });
+
+  it("should not route to dead-letter queue when retries remain", async () => {
+    const job = {
+      id: "42",
+      name: "sendEmail",
+      data: { to: "fail@example.com", type: "invitation", context: {} },
+      attemptsMade: 1,
+      opts: { attempts: 3 },
+      queue: { name: "email_queue" },
+    } as any;
+
+    await processor.onFailed(job, new Error("transient failure"));
+
+    expect(deadLetterQueue.add).not.toHaveBeenCalled();
   });
 });
