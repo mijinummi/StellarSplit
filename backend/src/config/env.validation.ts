@@ -1,8 +1,6 @@
 // Environment validation and configuration checks
-import { plainToInstance, Type } from 'class-transformer';
-import { IsString, IsNumber, IsBoolean, IsOptional, validateSync, IsEnum, IsArray, ValidateNested } from 'class-validator';
-import { envSchema } from './env.schema';
-
+import { Type } from 'class-transformer';
+import { IsString, IsNumber, IsBoolean, IsOptional, IsArray, ValidateNested } from 'class-validator';
 
 export enum Environment {
   DEVELOPMENT = 'development',
@@ -11,14 +9,6 @@ export enum Environment {
   TEST = 'test',
 }
 
-
-export function validateEnv(config: Record<string, unknown>) {
-  const { error, value } = envSchema.validate(config, { abortEarly: false });
-  if (error) {
-    throw new Error(`Environment validation error: ${error.message}`);
-  }
-  return value;
-}
 
 /**
  * Required environment variables for production

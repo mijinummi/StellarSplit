@@ -7,7 +7,6 @@ import { AppModule } from './app.module';
 import { GlobalHttpExceptionFilter } from './common/filters/http-exception.filter';
 import { TypeOrmExceptionFilter } from './common/filters/typeorm-exception.filter';
 import { validateEnvironment, Environment } from './config/env.validation';
-import { validateEnv } from './config/env.validation';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
