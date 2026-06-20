@@ -45,6 +45,7 @@ impl SplitTemplateContract {
     /// * `name` - Human-readable name for the template
     /// * `split_type` - How to divide funds (Equal, Percentage, or Fixed)
     /// * `participants` - List of participants and their share values
+    /// * `max_uses` - Optional cap on how many times this template may be applied
     ///
     /// # Returns
     /// The deterministic template ID (hex string) or an error
@@ -54,6 +55,7 @@ impl SplitTemplateContract {
         name: String,
         split_type: SplitType,
         participants: Vec<Participant>,
+        max_uses: Option<u32>,
     ) -> Result<String, Error> {
         // Require authorization from the creator
         creator.require_auth();
@@ -82,6 +84,8 @@ impl SplitTemplateContract {
             split_type,
             participants,
             version: CURRENT_TEMPLATE_VERSION,
+            use_count: 0,
+            max_uses,
         };
 
         // Store the template
@@ -103,6 +107,48 @@ impl SplitTemplateContract {
         );
 
         Ok(template_id)
+    }
+
+    /// Apply an existing template to create a new split, incrementing its use counter.
+    ///
+    /// Loads the template, checks version compatibility, enforces `max_uses` if set,
+    /// increments `use_count`, persists the updated template, and emits a usage event.
+    ///
+    /// # Arguments
+    /// * `env` - The Soroban environment
+    /// * `template_id` - The ID of the template to apply
+    /// * `split_id` - The ID of the split being created from this template
+    ///
+    /// # Returns
+    /// The applied `Template` (with updated `use_count`) or a structured error:
+    /// * `Error::TemplateNotFound` — template does not exist
+    /// * `Error::IncompatibleVersion` — template was created by an older/newer schema
+    /// * `Error::TemplateLimitReached` — `max_uses` is set and already reached
+    pub fn apply_template(env: Env, template_id: String, split_id: u64) -> Result<Template, Error> {
+        // Load template; return structured error instead of panicking
+        let mut template = storage::get_template(&env, &template_id)
+            .ok_or(Error::TemplateNotFound)?;
+
+        // Check version compatibility
+        if !Self::is_compatible(env.clone(), template.version) {
+            return Err(Error::IncompatibleVersion);
+        }
+
+        // Enforce max_uses cap if one is configured
+        if let Some(max) = template.max_uses {
+            if template.use_count >= max {
+                return Err(Error::TemplateLimitReached);
+            }
+        }
+
+        // Increment use counter and persist the updated template
+        template.use_count += 1;
+        storage::store_template(&env, &template);
+
+        // Emit event linking template to the new split
+        events::emit_template_used(&env, template_id, split_id);
+
+        Ok(template)
     }
 
     /// Use an existing template to track its usage in a split.

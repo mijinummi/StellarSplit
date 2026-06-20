@@ -42,6 +42,12 @@ pub struct Template {
     pub participants: Vec<Participant>,
     /// Template schema version
     pub version: u32,
+    /// Number of times this template has been successfully applied
+    pub use_count: u32,
+    /// Optional maximum number of times this template may be applied.
+    /// `None` means unlimited. When `Some(n)`, applying the template after
+    /// `use_count` has reached `n` returns `Error::TemplateLimitReached`.
+    pub max_uses: Option<u32>,
 }
 
 /// Contract errors
@@ -59,4 +65,6 @@ pub enum Error {
     IncompatibleVersion = 4,
     /// A template with the same name already exists for this creator
     DuplicateName = 5,
+    /// The template has reached its maximum number of allowed applications
+    TemplateLimitReached = 6,
 }
