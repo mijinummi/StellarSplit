@@ -1,6 +1,9 @@
 use soroban_sdk::{Address, Env, String, Symbol};
 
 use crate::Badge;
+use crate::metadata;
+use crate::types::*;
+use soroban_sdk::{contracttype, symbol_short, Address, Env, Symbol, Vec};
 
 // ─── Storage keys ─────────────────────────────────────────────────────────────
 

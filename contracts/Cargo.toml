@@ -10,6 +10,7 @@ members = [
     "staking",
     "split-escrow",
     "multi-sig-splits",
+    "reminder",
 ]
 # Experimental / broken crates remain in the workspace so they can share
 # workspace dependencies and be compiled locally, but they are excluded from
