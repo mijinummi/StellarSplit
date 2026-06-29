@@ -11,11 +11,18 @@ import {
 } from '../../components/Receipt';
 import { PaymentButton } from '../../components/Payment/PaymentButton';
 import { PaymentModal } from '../../components/Payment/PaymentModal';
+import { PaymentStatusFeed } from '../../components/Payment/PaymentStatusFeed';
 import { ShareModal } from '../../components/Split/ShareModal';
 import { signAndSubmitPayment } from '../../utils/stellar/wallet';
 import { LoadingSkeleton } from '../../components/Split/LoadingSkeleton';
 import { useCollaboration } from '../../hooks/useCollaboration';
-import { ConflictResolver, LiveActivityFeed, PresenceIndicator, type ActivityFeedItem } from '../../components/Collaboration';
+import { usePaymentFeed } from '../../hooks/usePaymentFeed';
+import {
+    ConflictResolver,
+    LiveActivityFeed,
+    PresenceIndicator,
+    type ActivityFeedItem,
+} from '../../components/Collaboration';
 import type { Participant, Split } from '../../types';
 import { useTranslation } from 'react-i18next';
 import type { ParsedStellarPaymentURI } from '../../utils/stellar/paymentUri';
@@ -31,11 +38,24 @@ import {
 } from '../../utils/api-client';
 import { splitDetailRepository } from '../../services/splitDetailRepository';
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function shortId(id: string, chars = 4): string {
+    if (!id || id.length <= chars * 2 + 3) return id;
+    return `${id.slice(0, chars)}…${id.slice(-chars)}`;
+}
+
+function roundCurrency(value: number): number {
+    return Math.round(value * 100) / 100;
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export const SplitDetailPage = () => {
     const { t } = useTranslation();
     const navigate = useNavigate();
     const { id: splitId } = useParams();
+
     const {
         activeUserId,
         canTransact,
@@ -44,6 +64,8 @@ export const SplitDetailPage = () => {
         publicKey,
         signTransaction,
     } = useWallet();
+
+    // ── Local state ──────────────────────────────────────────────────────────
     const [split, setSplit] = useState<Split | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isNotFound, setIsNotFound] = useState(false);
@@ -56,8 +78,21 @@ export const SplitDetailPage = () => {
     const [paymentMessage, setPaymentMessage] = useState<string | null>(null);
     const [activityItems, setActivityItems] = useState<ActivityFeedItem[]>([]);
 
+    // ── Collaboration ────────────────────────────────────────────────────────
     const { joinSplit, leaveSplit, sendUpdate, updateCursor, presence } = useCollaboration();
 
+    // ── Real-time payment feed (FE-011) ──────────────────────────────────────
+    const authToken =
+        typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+
+    const {
+        latestEvent,
+        completionEvent,
+        status: feedStatus,
+        events: feedEvents,
+    } = usePaymentFeed(splitId, authToken);
+
+    // ── Data loading ─────────────────────────────────────────────────────────
     const loadSplit = useCallback(async () => {
         if (!splitId) {
             setIsNotFound(true);
@@ -87,9 +122,9 @@ export const SplitDetailPage = () => {
         } finally {
             setIsLoading(false);
         }
-    }, [activeUserId, splitId]);
+    }, [activeUserId, splitId, t]);
 
-    // Track local cursor
+    // ── Track local cursor ───────────────────────────────────────────────────
     useEffect(() => {
         const handleMouseMove = (e: MouseEvent) => {
             updateCursor(e.clientX, e.clientY);
@@ -98,14 +133,14 @@ export const SplitDetailPage = () => {
         return () => window.removeEventListener('mousemove', handleMouseMove);
     }, [updateCursor]);
 
+    // ── Initial load ─────────────────────────────────────────────────────────
     useEffect(() => {
         void loadSplit();
     }, [loadSplit]);
 
+    // ── Join / leave collaboration room ──────────────────────────────────────
     useEffect(() => {
-        if (!split || !activeUserId) {
-            return;
-        }
+        if (!split || !activeUserId) return;
 
         joinSplit(split.id, {
             userId: activeUserId,
@@ -118,75 +153,93 @@ export const SplitDetailPage = () => {
         };
     }, [activeUserId, joinSplit, leaveSplit, publicKey, split, t]);
 
+    // ── FE-011: Patch local participant state on incoming payment event ───────
+    useEffect(() => {
+        if (!latestEvent || !split) return;
+
+        setSplit((prev) => {
+            if (!prev) return prev;
+
+            const updatedParticipants = prev.participants.map((p) =>
+                p.id === latestEvent.payerId
+                    ? {
+                          ...p,
+                         // new — matches Participant type
+status: latestEvent.status === 'confirmed' ? ('paid' as const) : p.status,
+amountDue: latestEvent.status === 'confirmed' ? 0 : p.amountDue,
+                      }
+                    : p,
+            );
+
+            return { ...prev, participants: updatedParticipants };
+        });
+    }, [latestEvent]); // intentionally omits `split` to avoid stale closure loop
+
+    // ── Derived state ────────────────────────────────────────────────────────
     const currentUser = useMemo(
-        () => split?.participants.find((participant) => participant.isCurrentUser) ?? null,
+        () => split?.participants.find((p) => p.isCurrentUser) ?? null,
         [split],
     );
-    const shouldShowPayment = !!currentUser && (currentUser.amountDue ?? currentUser.amountOwed) > 0 && !!split?.creatorWalletAddress;
 
+    // FE-011: also hide Pay button once split-completion fires
+    const shouldShowPayment =
+        !!currentUser &&
+        (currentUser.amountDue ?? currentUser.amountOwed) > 0 &&
+        !!split?.creatorWalletAddress &&
+        !completionEvent;
+
+    // ── Toast helpers ────────────────────────────────────────────────────────
     const setToastState = (status: 'idle' | 'success' | 'error', message?: string) => {
         setPaymentStatus(status);
         setPaymentMessage(message ?? null);
     };
 
-    const processPayment = useCallback(async (
-        destination: string,
-        amount: number,
-        scannedPayment?: ParsedStellarPaymentURI,
-    ) => {
-        if (!split || !currentUser || !publicKey) {
-            throw new Error('Connect your wallet before paying this split.');
-        }
-
-        if (!canTransact) {
-            throw new Error('Resolve your wallet network before paying this split.');
-        }
-
-        setIsProcessingPayment(true);
-
-        try {
-            const result = await signAndSubmitPayment({
-                amount,
-                destination,
-                sourceAccount: publicKey,
-                networkPassphrase,
-                horizonUrl,
-                memo: split.id.slice(0, 28),
-                memoType: 'text',
-                signTransaction,
-            });
-
-            if (!result.success || !result.txHash) {
-                throw new Error(result.error ?? 'Payment submission failed.');
+    // ── Payment processing ───────────────────────────────────────────────────
+    const processPayment = useCallback(
+        async (
+            destination: string,
+            amount: number,
+            scannedPayment?: ParsedStellarPaymentURI,
+        ) => {
+            if (!split || !currentUser || !publicKey) {
+                throw new Error('Connect your wallet before paying this split.');
             }
 
-            const confirmation = await submitSplitPayment({
-                splitId: split.id,
-                participantId: currentUser.id,
-                stellarTxHash: result.txHash,
-            });
-
-            if (!confirmation.success) {
-                throw new Error(confirmation.message);
+            if (!canTransact) {
+                throw new Error('Resolve your wallet network before paying this split.');
             }
 
-            await createActivityRecord({
-                userId: activeUserId ?? publicKey,
-                activityType: 'payment_made',
-                splitId: split.id,
-                metadata: {
-                    actorName: t('common.you'),
-                    title: split.title,
+            setIsProcessingPayment(true);
+
+            try {
+                const result = await signAndSubmitPayment({
                     amount,
-                    currency: split.currency,
-                    txHash: result.txHash,
-                },
-            }).catch(() => undefined);
+                    destination,
+                    sourceAccount: publicKey,
+                    networkPassphrase,
+                    horizonUrl,
+                    memo: split.id.slice(0, 28),
+                    memoType: 'text',
+                    signTransaction,
+                });
 
-            if (split.creatorWalletAddress && split.creatorWalletAddress !== (activeUserId ?? publicKey)) {
+                if (!result.success || !result.txHash) {
+                    throw new Error(result.error ?? 'Payment submission failed.');
+                }
+
+                const confirmation = await submitSplitPayment({
+                    splitId: split.id,
+                    participantId: currentUser.id,
+                    stellarTxHash: result.txHash,
+                });
+
+                if (!confirmation.success) {
+                    throw new Error(confirmation.message);
+                }
+
                 await createActivityRecord({
-                    userId: split.creatorWalletAddress,
-                    activityType: 'payment_received',
+                    userId: activeUserId ?? publicKey,
+                    activityType: 'payment_made',
                     splitId: split.id,
                     metadata: {
                         actorName: t('common.you'),
@@ -196,53 +249,69 @@ export const SplitDetailPage = () => {
                         txHash: result.txHash,
                     },
                 }).catch(() => undefined);
+
+                if (
+                    split.creatorWalletAddress &&
+                    split.creatorWalletAddress !== (activeUserId ?? publicKey)
+                ) {
+                    await createActivityRecord({
+                        userId: split.creatorWalletAddress,
+                        activityType: 'payment_received',
+                        splitId: split.id,
+                        metadata: {
+                            actorName: t('common.you'),
+                            title: split.title,
+                            amount,
+                            currency: split.currency,
+                            txHash: result.txHash,
+                        },
+                    }).catch(() => undefined);
+                }
+
+                sendUpdate({
+                    type: 'payment-status',
+                    payload: {
+                        status: 'paid',
+                        amount,
+                        destination,
+                        txHash: result.txHash,
+                        scanned: Boolean(scannedPayment),
+                    },
+                    userId: activeUserId ?? publicKey,
+                });
+
+                await loadSplit();
+                setToastState('success', confirmation.message);
+                window.setTimeout(() => {
+                    setIsPaymentModalOpen(false);
+                    setToastState('idle');
+                }, 1800);
+            } catch (error) {
+                const message = getApiErrorMessage(error);
+                setToastState('error', message);
+                window.setTimeout(() => setToastState('idle'), 3200);
+                throw error;
+            } finally {
+                setIsProcessingPayment(false);
             }
-
-            sendUpdate({
-                type: 'payment-status',
-                payload: {
-                    status: 'paid',
-                    amount,
-                    destination,
-                    txHash: result.txHash,
-                    scanned: Boolean(scannedPayment),
-                },
-                userId: activeUserId ?? publicKey,
-            });
-
-            await loadSplit();
-            setToastState('success', confirmation.message);
-            window.setTimeout(() => {
-                setIsPaymentModalOpen(false);
-                setToastState('idle');
-            }, 1800);
-        } catch (error) {
-            const message = getApiErrorMessage(error);
-            setToastState('error', message);
-            window.setTimeout(() => setToastState('idle'), 3200);
-            throw error;
-        } finally {
-            setIsProcessingPayment(false);
-        }
-    }, [
-        activeUserId,
-        canTransact,
-        currentUser,
-        horizonUrl,
-        loadSplit,
-        networkPassphrase,
-        publicKey,
-        sendUpdate,
-        signTransaction,
-        split,
-        t,
-    ]);
+        },
+        [
+            activeUserId,
+            canTransact,
+            currentUser,
+            horizonUrl,
+            loadSplit,
+            networkPassphrase,
+            publicKey,
+            sendUpdate,
+            signTransaction,
+            split,
+            t,
+        ],
+    );
 
     const handlePayment = async () => {
-        if (!split?.creatorWalletAddress || !currentUser) {
-            return;
-        }
-
+        if (!split?.creatorWalletAddress || !currentUser) return;
         await processPayment(
             split.creatorWalletAddress,
             currentUser.amountDue ?? currentUser.amountOwed,
@@ -250,9 +319,7 @@ export const SplitDetailPage = () => {
     };
 
     const handleScannedPayment = async (payment: ParsedStellarPaymentURI) => {
-        if (!currentUser) {
-            throw new Error('You are not part of this split.');
-        }
+        if (!currentUser) throw new Error('You are not part of this split.');
 
         if (payment.splitId && payment.splitId !== split?.id) {
             throw new Error('This QR code belongs to a different split.');
@@ -274,9 +341,7 @@ export const SplitDetailPage = () => {
         items: ParsedItem[];
         receiptTotal: number;
     }) => {
-        if (!split) {
-            return;
-        }
+        if (!split) return;
 
         const currentItems = split.items ?? [];
         await Promise.all([
@@ -325,6 +390,7 @@ export const SplitDetailPage = () => {
         await loadSplit();
     };
 
+    // ── Render: loading ──────────────────────────────────────────────────────
     if (isLoading) {
         return (
             <div className="min-h-screen bg-gray-50 pt-16">
@@ -333,6 +399,7 @@ export const SplitDetailPage = () => {
         );
     }
 
+    // ── Render: not found ────────────────────────────────────────────────────
     if (isNotFound || !split) {
         return (
             <div className="min-h-screen bg-gray-50 px-4 py-20">
@@ -362,6 +429,7 @@ export const SplitDetailPage = () => {
         );
     }
 
+    // ── Render: load error ───────────────────────────────────────────────────
     if (loadError) {
         return (
             <div className="min-h-screen bg-gray-50 px-4 py-20">
@@ -381,18 +449,36 @@ export const SplitDetailPage = () => {
         );
     }
 
+    // ── Render: main ─────────────────────────────────────────────────────────
     return (
         <div className="min-h-screen bg-gray-50 pb-32 md:pb-12">
+
+            {/* ── Toast notification ──────────────────────────────────────── */}
             {paymentStatus !== 'idle' && (
-                <div className={`fixed top-20 left-1/2 -translate-x-1/2 z-50 px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 animate-in slide-in-from-top duration-300 ${paymentStatus === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'
-                    }`}>
-                    {paymentStatus === 'success' ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
+                <div
+                    className={[
+                        'fixed top-20 left-1/2 -translate-x-1/2 z-50 px-6 py-3 rounded-full shadow-2xl',
+                        'flex items-center gap-3 animate-in slide-in-from-top duration-300',
+                        paymentStatus === 'success'
+                            ? 'bg-green-600 text-white'
+                            : 'bg-red-600 text-white',
+                    ].join(' ')}
+                >
+                    {paymentStatus === 'success' ? (
+                        <CheckCircle size={20} />
+                    ) : (
+                        <AlertCircle size={20} />
+                    )}
                     <span className="font-bold">
-                        {paymentMessage ?? (paymentStatus === 'success' ? t('common.settledSuccessfully') : t('common.paymentFailed'))}
+                        {paymentMessage ??
+                            (paymentStatus === 'success'
+                                ? t('common.settledSuccessfully')
+                                : t('common.paymentFailed'))}
                     </span>
                 </div>
             )}
 
+            {/* ── Mobile top bar ───────────────────────────────────────────── */}
             <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-gray-100 flex justify-between items-center px-4 py-3 md:hidden">
                 <button
                     type="button"
@@ -403,6 +489,7 @@ export const SplitDetailPage = () => {
                 </button>
                 <span className="font-bold text-gray-900">{t('common.splitDetails')}</span>
                 <button
+                    type="button"
                     onClick={() => setIsShareModalOpen(true)}
                     className="p-2 -mr-2 text-purple-600 hover:bg-purple-50 rounded-full transition-colors"
                 >
@@ -410,14 +497,19 @@ export const SplitDetailPage = () => {
                 </button>
             </div>
 
+            {/* ── Page content ─────────────────────────────────────────────── */}
             <div className="max-w-lg mx-auto p-4 md:p-8">
+
+                {/* Desktop header row */}
                 <div className="hidden md:flex justify-between items-center mb-8">
                     <button
                         type="button"
                         onClick={() => navigate('/dashboard')}
                         className="flex items-center gap-2 text-gray-600 hover:text-gray-900 font-medium transition-colors"
                     >
-                        <div className="p-1 rounded-full bg-gray-100"><ChevronLeft size={20} /></div>
+                        <div className="p-1 rounded-full bg-gray-100">
+                            <ChevronLeft size={20} />
+                        </div>
                         {t('common.backToDashboard')}
                     </button>
                     <div className="flex items-center gap-3">
@@ -426,13 +518,16 @@ export const SplitDetailPage = () => {
                             onClick={() => void loadSplit()}
                             className="flex items-center gap-2 text-gray-600 bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-xl font-bold transition-colors"
                         >
-                            <RefreshCw size={18} /> Refresh
+                            <RefreshCw size={18} />
+                            Refresh
                         </button>
                         <button
+                            type="button"
                             onClick={() => setIsShareModalOpen(true)}
                             className="flex items-center gap-2 text-purple-600 bg-purple-50 hover:bg-purple-100 px-4 py-2 rounded-xl font-bold transition-colors"
                         >
-                            <Share2 size={18} /> {t('common.shareSplit')}
+                            <Share2 size={18} />
+                            {t('common.shareSplit')}
                         </button>
                     </div>
                 </div>
@@ -445,10 +540,11 @@ export const SplitDetailPage = () => {
 
                 <ReceiptImage imageUrl={split.receiptUrl} />
 
+                {/* Receipt scan / replace toggle */}
                 <div className="mt-4">
                     <button
                         type="button"
-                        onClick={() => setShowReceiptUpload((value) => !value)}
+                        onClick={() => setShowReceiptUpload((v) => !v)}
                         className="text-sm text-purple-600 hover:text-purple-700 font-medium"
                     >
                         {showReceiptUpload ? 'Hide receipt review flow' : 'Scan or replace receipt'}
@@ -469,10 +565,7 @@ export const SplitDetailPage = () => {
                     )}
                 </div>
 
-                <ItemList
-                    items={split.items || []}
-                    currency={split.currency}
-                />
+                <ItemList items={split.items || []} currency={split.currency} />
 
                 <ParticipantList
                     participants={split.participants}
@@ -487,11 +580,19 @@ export const SplitDetailPage = () => {
                     />
                 )}
 
-                <div className="mt-8">
+                {/* ── FE-011: Live payment feed ─────────────────────────── */}
+                <div className="mt-8 space-y-6">
+                    <PaymentStatusFeed
+                        events={feedEvents}
+                        latestEvent={latestEvent}
+                        completionEvent={completionEvent}
+                        status={feedStatus}
+                    />
                     <LiveActivityFeed activities={activityItems} />
                 </div>
             </div>
 
+            {/* ── Payment modal ────────────────────────────────────────────── */}
             {shouldShowPayment && currentUser && split.creatorWalletAddress && (
                 <PaymentModal
                     isOpen={isPaymentModalOpen}
@@ -508,6 +609,7 @@ export const SplitDetailPage = () => {
                 />
             )}
 
+            {/* ── Share modal ──────────────────────────────────────────────── */}
             <ShareModal
                 isOpen={isShareModalOpen}
                 onClose={() => setIsShareModalOpen(false)}
@@ -516,6 +618,7 @@ export const SplitDetailPage = () => {
 
             <ConflictResolver />
 
+            {/* ── Remote cursors ───────────────────────────────────────────── */}
             {Object.values(presence).map((user) => {
                 if (!user.cursor || user.userId === activeUserId) return null;
                 return (
@@ -524,8 +627,20 @@ export const SplitDetailPage = () => {
                         className="fixed pointer-events-none z-50 transition-all duration-75 ease-linear flex flex-col items-start gap-1"
                         style={{ left: user.cursor.x, top: user.cursor.y }}
                     >
-                        <svg width="18" height="24" viewBox="0 0 18 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M2.5 0L17.5 15H11.5L8.5 24L2.5 0Z" fill="#A855F7" stroke="white" strokeWidth="2" strokeLinejoin="round" />
+                        <svg
+                            width="18"
+                            height="24"
+                            viewBox="0 0 18 24"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                        >
+                            <path
+                                d="M2.5 0L17.5 15H11.5L8.5 24L2.5 0Z"
+                                fill="#A855F7"
+                                stroke="white"
+                                strokeWidth="2"
+                                strokeLinejoin="round"
+                            />
                         </svg>
                         <span className="bg-purple-500 text-white text-xs px-2 py-0.5 rounded shadow-sm whitespace-nowrap">
                             {user.name}

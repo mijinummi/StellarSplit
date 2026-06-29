@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Camera, Repeat2, X, Check } from 'lucide-react';
+import { Camera, Repeat2, X, Check, AlertTriangle } from 'lucide-react';
 import {
   requestCameraPermission,
   stopCameraStream,
@@ -12,6 +12,7 @@ import {
   formatFileSize,
   isValidImageType,
 } from '../../utils/imageCompression';
+import { ManualEntryFallback } from '@components/ReceiptUpload';
 
 export interface CameraCaptureProps {
   onCapture: (file: File) => void;
@@ -386,9 +387,9 @@ export const CameraCapture = ({
                   <Camera size={28} />
                 </button>
               </div>
-            </div>
-          </>
-        ) : ) : cameraState.status === 'error' ? (
+              </div>
+        </>
+      ) : cameraState.status === 'error' ? (
   <div className="w-full p-6 bg-gray-50 rounded-xl">
 
     {fallbackReason && (

@@ -18,6 +18,7 @@ export default function Navbar({ onMenuOpen }: NavbarProps) {
         backdropFilter: "blur(12px)",
         WebkitBackdropFilter: "blur(12px)",
         borderBottom: "1px solid var(--color-border)",
+        boxSizing: "border-box",
       }}
     >
       {/* Accent top line */}
@@ -36,20 +37,28 @@ export default function Navbar({ onMenuOpen }: NavbarProps) {
 
       <div
         style={{
-          padding: "0 1.25rem",
+          padding: "0 1rem",
           height: "3.5rem",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
+          gap: "0.5rem",
+          minWidth: 0, // prevents flex children from overflowing
         }}
       >
-        {/* ── Left: hamburger (mobile only) + brand ── */}
-        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-          {/* Hamburger — hidden on lg+ since sidebar is always visible there */}
+        {/* ── Left: hamburger + mobile brand ── */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "0.5rem",
+            minWidth: 0,
+            flexShrink: 0,
+          }}
+        >
           <button
             onClick={() => onMenuOpen?.()}
-            className="lg:hidden"
-            aria-label="Open navigation menu"
+            aria-label="Toggle navigation menu"
             style={{
               background: "transparent",
               border: "none",
@@ -60,6 +69,7 @@ export default function Navbar({ onMenuOpen }: NavbarProps) {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
+              flexShrink: 0,
               transition: "color 0.15s, background-color 0.15s",
             }}
             onMouseEnter={(e) => {
@@ -88,25 +98,33 @@ export default function Navbar({ onMenuOpen }: NavbarProps) {
             </svg>
           </button>
 
-          {/* Brand — shown on mobile (sidebar is hidden), hidden on desktop */}
+          {/* Brand — hidden on lg+ since sidebar shows it there */}
           <div
             className="lg:hidden"
-            style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "0.4rem",
+              minWidth: 0,
+              overflow: "hidden",
+            }}
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-              <polygon
-                points="12,2 22,20 2,20"
-                stroke="var(--color-accent)"
-                strokeWidth="2"
-                fill="color-mix(in srgb, var(--color-accent) 15%, transparent)"
-              />
-            </svg>
+            <img
+              src="/stellarsplit-logo.png"
+              alt="StellarSplit logo"
+              width={28}
+              height={28}
+              style={{ flexShrink: 0 }}
+            />
             <span
               style={{
                 fontWeight: 700,
-                fontSize: "0.95rem",
+                fontSize: "0.9rem",
                 color: "var(--color-accent)",
                 letterSpacing: "-0.02em",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
               }}
             >
               StellarSplit
@@ -114,39 +132,49 @@ export default function Navbar({ onMenuOpen }: NavbarProps) {
           </div>
         </div>
 
-        {/* ── Right: ThemeToggle + divider + WalletButton ── */}
-        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-          <ThemeToggle />
+  {/* ── Right: ThemeToggle + divider + WalletButton ── */}
+<div
+  style={{
+    display: "flex",
+    alignItems: "center",
+    gap: "0.5rem",
+    flexShrink: 0,
+  }}
+>
+  {/* Hide theme toggle on small screens */}
+  <div className="hidden sm:flex" style={{ alignItems: "center", gap: "0.5rem" }}>
+    <ThemeToggle />
+    <div
+      style={{
+        width: "1px",
+        height: "1.4rem",
+        backgroundColor: "var(--color-border)",
+        flexShrink: 0,
+      }}
+    />
+  </div>
 
-          <div
-            style={{
-              width: "1px",
-              height: "1.4rem",
-              backgroundColor: "var(--color-border)",
-            }}
-          />
-
-          <WalletButton
-            style={{
-              background:
-                "linear-gradient(135deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 70%, #a78bfa))",
-              color: "#ffffff",
-              border: "none",
-              borderRadius: "0.5rem",
-              padding: "0.45rem 1rem",
-              fontWeight: 600,
-              fontSize: "0.875rem",
-              cursor: "pointer",
-              boxShadow:
-                "0 0 12px color-mix(in srgb, var(--color-accent) 25%, transparent)",
-              transition: "opacity 0.2s, box-shadow 0.2s",
-              whiteSpace: "nowrap",
-            }}
-          >
-            <span className="hidden sm:inline">Connect Wallet</span>
-            <span className="sm:hidden">Connect</span>
-          </WalletButton>
-        </div>
+  <WalletButton
+    style={{
+      background:
+        "linear-gradient(135deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 70%, #a78bfa))",
+      color: "#ffffff",
+      border: "none",
+      borderRadius: "0.5rem",
+      padding: "0.45rem 0.75rem",
+      fontWeight: 600,
+      fontSize: "0.875rem",
+      cursor: "pointer",
+      boxShadow:
+        "0 0 12px color-mix(in srgb, var(--color-accent) 25%, transparent)",
+      transition: "opacity 0.2s, box-shadow 0.2s",
+      whiteSpace: "nowrap",
+    }}
+  >
+    <span className="hidden sm:inline">Connect Wallet</span>
+    <span className="sm:hidden">Connect</span>
+  </WalletButton>
+</div>
       </div>
     </header>
   );

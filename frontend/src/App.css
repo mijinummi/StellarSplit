@@ -1,8 +1,8 @@
 #root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  text-align: left;
 }
 
 .logo {
@@ -62,7 +62,7 @@
 }
 
 .dashboard-inner {
-  max-inline-size: 80rem;
+  max-inline-size: 96rem; /* was 80rem — gives you much more horizontal space */
   margin-inline: auto;
 }
 

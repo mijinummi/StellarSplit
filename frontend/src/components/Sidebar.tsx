@@ -37,7 +37,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   return (
     <>
-      {/* Backdrop — mobile only */}
+      {/* Backdrop — closes sidebar on tap, mobile only */}
       {isOpen && (
         <div
           onClick={onClose}
@@ -67,9 +67,15 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           flexDirection: "column",
           zIndex: 40,
           overflowY: "auto",
-          transition: "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+          /*
+           * KEY CHANGE: removed the Tailwind lg:translate-x-0 class that
+           * was forcing the sidebar to stay visible on desktop.
+           * Now a single JS-driven transform controls both mobile and desktop.
+           */
+          transform: isOpen ? "translateX(0)" : "translateX(-100%)",
+          transition: "transform 0.28s cubic-bezier(0.4, 0, 0.2, 1)",
+          visibility: isOpen ? "visible" : "hidden",
         }}
-        className={`${isOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0`}
       >
         {/* Accent top line */}
         <div
@@ -96,14 +102,12 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-              <polygon
-                points="12,2 22,20 2,20"
-                stroke="var(--color-accent)"
-                strokeWidth="2"
-                fill="color-mix(in srgb, var(--color-accent) 15%, transparent)"
-              />
-            </svg>
+            <img
+              src="/stellarsplit-logo.png"
+              alt="StellarSplit logo"
+              width={32}
+              height={32}
+            />
             <span
               style={{
                 fontWeight: 700,
@@ -117,7 +121,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             </span>
           </div>
 
-          {/* Close button — mobile only */}
+          {/* Close button — mobile only; desktop uses the navbar hamburger */}
           <button
             onClick={onClose}
             className="lg:hidden"
@@ -161,7 +165,6 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             gap: "0.2rem",
           }}
         >
-          {/* Main navigation */}
           <span
             style={{
               fontSize: "0.65rem",
@@ -198,7 +201,6 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             </NavLink>
           ))}
 
-          {/* ── Divider ── */}
           <hr
             style={{
               border: "none",
@@ -207,7 +209,6 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             }}
           />
 
-          {/* Tools section */}
           <span
             style={{
               fontSize: "0.65rem",
@@ -244,7 +245,6 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             </NavLink>
           ))}
 
-          {/* GitHub link */}
           <a
             href="https://github.com/OlufunbiIK/StellarSplit"
             target="_blank"
