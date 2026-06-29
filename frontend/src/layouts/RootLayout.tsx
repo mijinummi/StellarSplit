@@ -7,7 +7,6 @@ type ShellErrorBoundaryProps = {
   children: ReactNode;
   resetKey: string;
 };
-
 type ShellErrorBoundaryState = {
   error: Error | null;
 };
@@ -16,9 +15,7 @@ class ShellErrorBoundary extends Component<
   ShellErrorBoundaryProps,
   ShellErrorBoundaryState
 > {
-  state: ShellErrorBoundaryState = {
-    error: null,
-  };
+  state: ShellErrorBoundaryState = { error: null };
 
   static getDerivedStateFromError(error: Error): ShellErrorBoundaryState {
     return { error };
@@ -30,9 +27,7 @@ class ShellErrorBoundary extends Component<
     }
   }
 
-  handleRetry = () => {
-    this.setState({ error: null });
-  };
+  handleRetry = () => this.setState({ error: null });
 
   render() {
     if (this.state.error) {
@@ -49,7 +44,6 @@ class ShellErrorBoundary extends Component<
               {this.state.error.message ||
                 "Something went wrong while loading the current screen."}
             </p>
-
             <div className="mt-6 flex flex-wrap gap-3">
               <button
                 type="button"
@@ -69,18 +63,37 @@ class ShellErrorBoundary extends Component<
         </section>
       );
     }
-
     return this.props.children;
   }
 }
 
+const STORAGE_KEY = "sidebar-open";
+
 export default function RootLayout() {
   const { pathname } = useLocation();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
+  // Desktop: restore saved preference. Mobile: always start closed.
+  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    if (window.innerWidth >= 1024) {
+      return localStorage.getItem(STORAGE_KEY) !== "false";
+    }
+    return false;
+  });
+
+  // Persist desktop preference whenever it changes
   useEffect(() => {
-    setIsSidebarOpen(false);
+    localStorage.setItem(STORAGE_KEY, String(isSidebarOpen));
+  }, [isSidebarOpen]);
+
+  // On mobile, close when navigating to a new page
+  useEffect(() => {
+    if (window.innerWidth < 1024) {
+      setIsSidebarOpen(false);
+    }
   }, [pathname]);
+
+  const toggle = () => setIsSidebarOpen((v) => !v);
 
   return (
     <div className="min-h-screen bg-theme text-theme">
@@ -89,8 +102,22 @@ export default function RootLayout() {
         onClose={() => setIsSidebarOpen(false)}
       />
 
-      <div className="min-h-screen lg:pl-[14rem]">
-        <Navbar onMenuOpen={() => setIsSidebarOpen(true)} />
+      {/*
+       * On desktop (lg+): shift the content column right when the sidebar
+       * is open. lg:pl-[14rem] is applied only when isSidebarOpen is true.
+       * On mobile: sidebar overlays (fixed + backdrop) so no padding shift.
+       *
+       * transition-[padding-left] animates the shift to match the sidebar
+       * slide (280ms cubic-bezier matches Sidebar.tsx transition value).
+       */}
+      <div
+        className={[
+          "min-h-screen",
+          "[transition:padding-left_280ms_cubic-bezier(0.4,0,0.2,1)]",
+          isSidebarOpen ? "lg:pl-[14rem]" : "lg:pl-0",
+        ].join(" ")}
+      >
+        <Navbar onMenuOpen={toggle} />
         <main id="main-content" className="min-h-[calc(100vh-3.5rem)]">
           <ShellErrorBoundary resetKey={pathname}>
             <Outlet />

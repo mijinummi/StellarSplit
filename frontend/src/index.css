@@ -7,8 +7,8 @@
 
 @theme {
   /* ── Drips-wave / Stellar-wave color palette ── */
-  --color-primary: #6c63ff;
-  --color-primary-dark: #8b85ff;
+  --color-primary: #081123;
+  --color-primary-dark: #1a2d4a; 
 
   --color-surface-light: #ffffff;
   --color-surface-dark: #0f1117;
@@ -45,7 +45,7 @@
   --color-text-muted: var(--color-muted-light);
   --color-border: var(--color-border-light);
   --color-accent: var(--color-primary);
-  --color-ring: rgba(108, 99, 255, 0.4);
+  --color-ring: rgba(8, 17, 35, 0.4);
   /* Aliases for legacy App.css variable names */
   --color-bg-theme: var(--color-bg);
   --color-text-theme: var(--color-text);
@@ -62,7 +62,7 @@
   --color-text-muted: var(--color-muted-dark);
   --color-border: var(--color-border-dark);
   --color-accent: var(--color-primary-dark);
-  --color-ring: rgba(139, 133, 255, 0.4);
+  --color-ring: rgba(26, 45, 74, 0.4);
   /* Aliases for legacy App.css variable names */
   --color-bg-theme: var(--color-bg);
   --color-text-theme: var(--color-text);
@@ -125,9 +125,7 @@ body {
 /* High contrast focus for buttons */
 button:focus-visible,
 [role="button"]:focus-visible {
-  outline: 3px solid var(--color-primary);
-  outline-offset: 2px;
-  box-shadow: 0 0 0 6px rgba(108, 99, 255, 0.3);
+  box-shadow: 0 0 0 6px rgba(8, 17, 35, 0.3);
 }
 
 /* Focus for links */
@@ -311,4 +309,68 @@ body {
 .sidebar-link:hover:not([aria-current="page"]) {
   color: var(--color-text);
   background-color: color-mix(in srgb, var(--color-accent) 6%, transparent);
+}
+
+/* =============================================================
+   PAYMENT STATUS FEED — add these blocks to frontend/src/index.css
+   Paste them at the bottom of the file, before the closing line.
+   ============================================================= */
+
+/* ── Row highlight flash ──────────────────────────────────── */
+
+@keyframes payment-flash {
+  0% {
+    box-shadow: inset 0 0 0 2px #22c55e;
+    background-color: #f0fdf4;
+  }
+  60%  { box-shadow: inset 0 0 0 2px #22c55e; background-color: #dcfce7; }
+  100% { box-shadow: none; background-color: transparent; }
+}
+
+.payment-flash {
+  animation: payment-flash 1.8s ease-out forwards;
+}
+
+/* ── CSS-only confetti ────────────────────────────────────── */
+
+.confetti-overlay {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  z-index: 9999;
+}
+
+.confetti-piece {
+  position: absolute;
+  top: -12px;
+  left: var(--left, 50%);
+  width: 8px;
+  height: 14px;
+  border-radius: 2px;
+  background-color: hsl(var(--hue, 260) 80% 60%);
+  opacity: 0;
+  animation: confetti-fall 2.4s var(--delay, 0s) ease-in forwards;
+}
+
+@keyframes confetti-fall {
+  0%   { transform: translateY(0)   rotateZ(0deg)   scaleX(1);   opacity: 1; }
+  40%  { opacity: 1; }
+  80%  { transform: translateY(95vh) rotateZ(540deg) scaleX(-1);  opacity: 0.6; }
+  100% { transform: translateY(110vh) rotateZ(720deg) scaleX(1);  opacity: 0; }
+}
+
+/* ── Respect reduced motion ───────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .confetti-piece {
+    animation: none !important;
+    display: none;
+  }
+
+  .payment-flash {
+    animation: none !important;
+    /* Still show a static green tint so the update is visible */
+    background-color: #f0fdf4;
+  }
 }

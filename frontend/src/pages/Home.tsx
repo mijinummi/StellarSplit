@@ -20,7 +20,7 @@ const quickLinks = [
 
 export default function HomePage() {
   return (
-    <section className="mx-auto max-w-6xl px-6 py-8 sm:px-8 sm:py-10">
+    <section className="mx-auto max-w-6xl px-3 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
       <div className="rounded-[2rem] border border-theme bg-card-theme p-6 shadow-sm sm:p-8">
         <p className="text-xs font-semibold uppercase tracking-[0.28em] text-accent">
           Expense Splitting On Stellar
